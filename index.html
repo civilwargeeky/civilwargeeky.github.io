@@ -33,6 +33,7 @@
     --accent-contrast: #FAF7F0;
     --border: rgba(35,30,20,0.13);
     --overlay-bg: rgba(30,28,22,0.4);
+    --danger: #c93b2b;
   }
   body.theme-sepia{
     --bg: #EFE0C0;
@@ -44,6 +45,7 @@
     --accent-contrast: #F7ECD3;
     --border: rgba(74,56,38,0.2);
     --overlay-bg: rgba(40,30,15,0.45);
+    --danger: #a83222;
   }
   body.theme-dark{
     --bg: #1B1917;
@@ -55,6 +57,7 @@
     --accent-contrast: #14231A;
     --border: rgba(230,222,203,0.14);
     --overlay-bg: rgba(0,0,0,0.55);
+    --danger: #e56b5d;
   }
 
   *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -104,6 +107,7 @@
   .icon-btn:not(:disabled):active{ background: var(--surface-2); }
   .icon-btn.small{ width:36px; height:36px; font-size:14px; }
   .icon-btn.accent{ color: var(--accent); }
+  .icon-btn.danger{ color: var(--danger); }
   .page-indicator{
     font-size:13px;
     color: var(--text-muted);
@@ -159,6 +163,21 @@
     margin-top:10px;
   }
   .btn-secondary:active{ background: var(--surface-2); }
+  .btn-danger{
+    background: transparent;
+    color: var(--danger);
+    border:1.5px solid var(--danger);
+    padding:11px 20px;
+    border-radius:10px;
+    font-size:14px;
+    font-weight:500;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+  }
+  .btn-danger:active{ background: rgba(201, 59, 43, 0.1); }
   .empty-actions{ display:flex; flex-direction:column; align-items:center; }
 
   .spinner{
@@ -229,6 +248,12 @@
     margin-bottom:22px;
     padding-bottom:14px;
     border-bottom:1px solid var(--border);
+  }
+  .lang-controls{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-shrink:0;
   }
   .lang-pill{
     font-family: var(--font-ui);
@@ -403,9 +428,12 @@
     <article id="content" class="content hidden">
       <div class="lang-row">
         <span class="lang-pill" id="langPill"></span>
-        <div class="view-toggle" id="viewToggle">
-          <button data-view="translated" class="toggle-btn active">English</button>
-          <button data-view="original" class="toggle-btn">Original</button>
+        <div class="lang-controls">
+          <div class="view-toggle" id="viewToggle">
+            <button data-view="translated" class="toggle-btn active">English</button>
+            <button data-view="original" class="toggle-btn">Original</button>
+          </div>
+          <button id="btnDeletePage" class="icon-btn small danger" aria-label="Delete current page" title="Delete current page"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       </div>
       <div id="textBody" class="text-body"></div>
@@ -461,6 +489,11 @@
         <button id="btnToggleKey" class="icon-btn small" aria-label="Show key"><i class="fa-solid fa-eye"></i></button>
       </div>
       <p class="hint">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com</a>. It's stored only on this device.</p>
+    </section>
+
+    <section class="setting-group">
+      <label>Data management</label>
+      <button id="btnClearAllPages" class="btn-danger"><i class="fa-solid fa-trash-can"></i> Clear all pages from memory</button>
     </section>
   </div>
 </div>
@@ -528,6 +561,7 @@
     langPill: document.getElementById("langPill"),
     viewToggle: document.getElementById("viewToggle"),
     textBody: document.getElementById("textBody"),
+    btnDeletePage: document.getElementById("btnDeletePage"),
 
     settingsOverlay: document.getElementById("settingsOverlay"),
     btnCloseSettings: document.getElementById("btnCloseSettings"),
@@ -540,6 +574,7 @@
     apiKeyInput: document.getElementById("apiKeyInput"),
     apiKeyRow: document.getElementById("apiKeyRow"),
     btnToggleKey: document.getElementById("btnToggleKey"),
+    btnClearAllPages: document.getElementById("btnClearAllPages"),
 
     cameraInput: document.getElementById("cameraInput"),
     galleryInput: document.getElementById("galleryInput")
@@ -698,6 +733,43 @@
     pendingTimerInterval = setInterval(tick, 500);
   }
 
+  // ---------- Deletion & Clearing ----------
+  function deleteCurrentPage(){
+    if(currentIndex < 0 || currentIndex >= pages.length) return;
+    if(!confirm("Are you sure you want to delete this page?")) return;
+
+    var pageId = pages[currentIndex].id;
+    delete pageImageCache[pageId];
+    pages.splice(currentIndex, 1);
+    savePages();
+
+    if(pages.length === 0){
+      currentIndex = -1;
+    } else if(currentIndex >= pages.length){
+      currentIndex = pages.length - 1;
+    }
+
+    showToast("Page deleted");
+    render();
+  }
+
+  function clearAllPages(){
+    if(!pages.length){
+      showToast("No pages to clear");
+      return;
+    }
+    if(!confirm("Are you sure you want to delete all pages from memory? This action cannot be undone.")){
+      return;
+    }
+    pages = [];
+    pageImageCache = {};
+    savePages();
+    currentIndex = -1;
+    closeSettings();
+    showToast("All pages cleared");
+    render();
+  }
+
   // ---------- Rendering ----------
   function updateNav(){
     el.pageIndicator.textContent = pages.length ? (currentIndex + 1) + " / " + pages.length : "0 / 0";
@@ -769,6 +841,8 @@
     currentView = btn.dataset.view;
     if(pages[currentIndex]) renderContent(pages[currentIndex]);
   });
+  el.btnDeletePage.addEventListener("click", deleteCurrentPage);
+  el.btnClearAllPages.addEventListener("click", clearAllPages);
 
   // Swipe navigation
   (function(){
