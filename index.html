@@ -77,21 +77,23 @@
 
   #app{ height:100dvh; height:100vh; display:flex; flex-direction:column; }
 
-  /* ---- Top bar ---- */
+  /* ---- Bottom bar ---- */
   .topbar{
-    height: calc(var(--top-bar-h) + var(--safe-top));
-    padding-top: var(--safe-top);
+    height: calc(var(--top-bar-h) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    padding-top: 0;
     display:flex;
     align-items:center;
     gap:2px;
     padding-left:8px;
     padding-right:8px;
-    border-bottom:1px solid var(--border);
+    border-top:1px solid var(--border);
+    border-bottom:none;
     background: color-mix(in srgb, var(--surface) 88%, transparent);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     position:sticky;
-    top:0;
+    bottom:0;
     z-index:10;
     flex-shrink:0;
   }
@@ -233,11 +235,11 @@
   }
 
   /* ---- Content ---- */
-  .content{
+.content{
     max-width:640px;
     width:100%;
     margin:0 auto;
-    padding: 18px 22px calc(48px + var(--safe-bottom));
+    padding: calc(18px + var(--safe-top)) 22px 48px;
     flex:1;
   }
   .lang-row{
@@ -393,15 +395,6 @@
 
 <div id="app">
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
-  <header class="topbar">
-    <button id="btnBack" class="icon-btn" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
-    <div class="page-indicator" id="pageIndicator">0 / 0</div>
-    <button id="btnForward" class="icon-btn" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
-    <div class="spacer"></div>
-    <button id="btnCamera" class="icon-btn accent" aria-label="Take a photo"><i class="fa-solid fa-camera"></i></button>
-    <button id="btnFile" class="icon-btn accent" aria-label="Choose a file"><i class="fa-solid fa-file-image"></i></button>
-    <button id="btnSettings" class="icon-btn" aria-label="Settings"><i class="fa-solid fa-gear"></i></button>
-  </header>
 
   <main id="reader">
     <div id="emptyState" class="empty-state">
@@ -412,6 +405,7 @@
         <button id="btnFileEmpty" class="btn-secondary">Choose a file</button>
       </div>
     </div>
+    
 
     <div id="loadingState" class="loading-state hidden">
       <div class="spinner"></div>
@@ -439,6 +433,18 @@
       <div id="textBody" class="text-body"></div>
     </article>
   </main>
+  
+  
+  <header class="topbar">
+    <button id="btnBack" class="icon-btn" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+    <div class="page-indicator" id="pageIndicator">0 / 0</div>
+    <button id="btnForward" class="icon-btn" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+    <div class="spacer"></div>
+    <button id="btnCamera" class="icon-btn accent" aria-label="Take a photo"><i class="fa-solid fa-camera"></i></button>
+    <button id="btnFile" class="icon-btn accent" aria-label="Choose a file"><i class="fa-solid fa-file-image"></i></button>
+    <button id="btnSettings" class="icon-btn" aria-label="Settings"><i class="fa-solid fa-gear"></i></button>
+  </header>
+
 </div>
 
 <div id="settingsOverlay" class="overlay hidden">
