@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" id="themeColorMeta" content="#FAF7F0">
+<title>Marginalia — book page translator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" referrerpolicy="no-referrer">
+<style>
+  :root{
+    --font-ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
+    --top-bar-h: 56px;
+    --reading-size: 19px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* ---- Themes ---- */
+  body.theme-light{
+    --bg: #FAF7F0;
+    --surface: #FFFFFF;
+    --surface-2: #F1ECE0;
+    --text: #232323;
+    --text-muted: #746c5c;
+    --accent: #2F4B3C;
+    --accent-contrast: #FAF7F0;
+    --border: rgba(35,30,20,0.13);
+    --overlay-bg: rgba(30,28,22,0.4);
+  }
+  body.theme-sepia{
+    --bg: #EFE0C0;
+    --surface: #F7ECD3;
+    --surface-2: #E6D3A9;
+    --text: #4A3826;
+    --text-muted: #8a7458;
+    --accent: #77461F;
+    --accent-contrast: #F7ECD3;
+    --border: rgba(74,56,38,0.2);
+    --overlay-bg: rgba(40,30,15,0.45);
+  }
+  body.theme-dark{
+    --bg: #1B1917;
+    --surface: #242220;
+    --surface-2: #2E2B27;
+    --text: #E6DECB;
+    --text-muted: #948C7A;
+    --accent: #9BC0A8;
+    --accent-contrast: #14231A;
+    --border: rgba(230,222,203,0.14);
+    --overlay-bg: rgba(0,0,0,0.55);
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ height:100%; overscroll-behavior-y: none; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+  button{ font-family: inherit; border:none; background:none; color:inherit; cursor:pointer; }
+  input{ font-family: inherit; }
+  a{ color: var(--accent); }
+  .hidden{ display:none !important; }
+  .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+  #app{ height:100dvh; height:100vh; display:flex; flex-direction:column; }
+
+  /* ---- Top bar ---- */
+  .topbar{
+    height: calc(var(--top-bar-h) + var(--safe-top));
+    padding-top: var(--safe-top);
+    display:flex;
+    align-items:center;
+    gap:2px;
+    padding-left:8px;
+    padding-right:8px;
+    border-bottom:1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    position:sticky;
+    top:0;
+    z-index:10;
+    flex-shrink:0;
+  }
+  .icon-btn{
+    width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px;
+    border-radius:8px;
+    color: var(--text);
+    flex-shrink:0;
+  }
+  .icon-btn:disabled{ opacity:0.28; }
+  .icon-btn:not(:disabled):active{ background: var(--surface-2); }
+  .icon-btn.small{ width:36px; height:36px; font-size:14px; }
+  .icon-btn.accent{ color: var(--accent); }
+  .page-indicator{
+    font-size:13px;
+    color: var(--text-muted);
+    min-width:56px;
+    text-align:center;
+    font-variant-numeric: tabular-nums;
+  }
+  .spacer{ flex:1; }
+
+  /* ---- Reader area ---- */
+  #reader{
+    flex:1;
+    overflow-y:auto;
+    -webkit-overflow-scrolling: touch;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .empty-state, .loading-state, .error-state{
+    margin:auto;
+    max-width:340px;
+    padding:32px 28px;
+    text-align:center;
+  }
+  .empty-title, .error-title{
+    font-family: var(--font-serif);
+    font-size:22px;
+    margin:0 0 8px;
+  }
+  .empty-body, .error-body{
+    font-size:15px;
+    color: var(--text-muted);
+    line-height:1.5;
+    margin:0 0 22px;
+  }
+  .btn-primary{
+    background: var(--accent);
+    color: var(--accent-contrast);
+    padding:13px 26px;
+    border-radius:10px;
+    font-size:15px;
+    font-weight:500;
+  }
+  .btn-primary:active{ opacity:0.85; }
+  .btn-secondary{
+    background: transparent;
+    color: var(--text);
+    border:1.5px solid var(--border);
+    padding:12px 26px;
+    border-radius:10px;
+    font-size:15px;
+    font-weight:500;
+    margin-top:10px;
+  }
+  .btn-secondary:active{ background: var(--surface-2); }
+  .empty-actions{ display:flex; flex-direction:column; align-items:center; }
+
+  .spinner{
+    width:30px; height:30px;
+    margin:0 auto 20px;
+    border-radius:50%;
+    border:3px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 0.9s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .spinner{ animation: none; opacity:0.6; }
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .loading-elapsed{
+    font-size:12.5px;
+    color: var(--text-muted);
+    margin:2px 0 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- Toasts ---- */
+  .toast-container{
+    position:fixed;
+    top: calc(var(--safe-top) + 8px);
+    left:0; right:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    z-index:200;
+    padding:0 16px;
+    pointer-events:none;
+  }
+  .toast{
+    background: var(--surface);
+    color: var(--text);
+    border:1px solid var(--border);
+    padding:12px 18px;
+    border-radius:10px;
+    font-size:13.5px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.16);
+    max-width:420px;
+    text-align:center;
+    opacity:0;
+    transform: translateY(-14px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .toast.show{ opacity:1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce){
+    .toast{ transition:none; }
+  }
+
+  /* ---- Content ---- */
+  .content{
+    max-width:640px;
+    width:100%;
+    margin:0 auto;
+    padding: 18px 22px calc(48px + var(--safe-bottom));
+    flex:1;
+  }
+  .lang-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:22px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--border);
+  }
+  .lang-pill{
+    font-family: var(--font-ui);
+    font-size:12.5px;
+    color: var(--text-muted);
+    letter-spacing:0.01em;
+  }
+  .view-toggle{
+    display:flex;
+    background: var(--surface-2);
+    border-radius:8px;
+    padding:3px;
+    flex-shrink:0;
+  }
+  .toggle-btn{
+    font-size:12.5px;
+    font-weight:500;
+    padding:6px 12px;
+    border-radius:6px;
+    color: var(--text-muted);
+  }
+  .toggle-btn.active{
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+
+  .text-body{
+    font-family: var(--font-serif);
+    font-size: var(--reading-size);
+    line-height:1.7;
+    color: var(--text);
+  }
+  .text-body p{ margin:0 0 1.1em; }
+  .text-body h1,.text-body h2,.text-body h3{
+    font-family: var(--font-serif);
+    font-weight:600;
+    line-height:1.3;
+    margin: 1.2em 0 0.5em;
+  }
+  .text-body h1{ font-size:1.5em; }
+  .text-body h2{ font-size:1.3em; }
+  .text-body h3{ font-size:1.12em; }
+  .text-body em{ font-style:italic; }
+  .text-body strong{ font-weight:600; }
+  .text-body blockquote{
+    margin:0 0 1.1em;
+    padding-left:16px;
+    border-left:3px solid var(--border);
+    color: var(--text-muted);
+    font-style:italic;
+  }
+
+  /* ---- Overlays / sheets ---- */
+  .overlay{
+    position:fixed; inset:0;
+    background: var(--overlay-bg);
+    display:flex; align-items:flex-end;
+    z-index:100;
+  }
+  .sheet{
+    background: var(--surface);
+    color: var(--text);
+    width:100%;
+    max-width:520px;
+    margin:0 auto;
+    border-radius:18px 18px 0 0;
+    padding: 6px 20px calc(20px + var(--safe-bottom));
+    max-height:85vh;
+    overflow-y:auto;
+  }
+  .sheet-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 0 6px;
+  }
+  .sheet-header h2{
+    font-family: var(--font-serif);
+    font-size:19px;
+    margin:0;
+    font-weight:600;
+  }
+  .setting-group{ padding:16px 0; border-top:1px solid var(--border); }
+  .setting-group:first-child{ border-top:none; }
+  .setting-group > label{
+    display:block;
+    font-size:13px;
+    font-weight:500;
+    color: var(--text-muted);
+    margin-bottom:10px;
+  }
+  .font-size-row{ display:flex; align-items:center; gap:10px; }
+  .font-size-row input[type=range]{ flex:1; accent-color: var(--accent); }
+  .theme-row{ display:flex; gap:8px; }
+  .theme-swatch{
+    flex:1;
+    padding:10px 0;
+    border-radius:9px;
+    border:1.5px solid var(--border);
+    font-size:13.5px;
+    font-weight:500;
+  }
+  .theme-swatch.active{ border-color: var(--accent); color: var(--accent); }
+  .api-key-row{ display:flex; gap:8px; align-items:center; }
+  .api-key-row input{
+    flex:1;
+    padding:11px 12px;
+    border-radius:9px;
+    border:1.5px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size:14.5px;
+  }
+  .api-key-row input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .api-key-row.flash input{ outline:2px solid var(--accent); outline-offset:1px; }
+  .hint{ font-size:12.5px; color: var(--text-muted); margin:8px 0 0; }
+  .select-input{
+    width:100%;
+    padding:11px 12px;
+    border-radius:9px;
+    border:1.5px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size:14.5px;
+    appearance:none;
+    -webkit-appearance:none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+    background-position: calc(100% - 20px) center, calc(100% - 14px) center;
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+  }
+  .select-input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body class="theme-light">
+
+<div id="app">
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+  <header class="topbar">
+    <button id="btnBack" class="icon-btn" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+    <div class="page-indicator" id="pageIndicator">0 / 0</div>
+    <button id="btnForward" class="icon-btn" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+    <div class="spacer"></div>
+    <button id="btnCamera" class="icon-btn accent" aria-label="Take a photo"><i class="fa-solid fa-camera"></i></button>
+    <button id="btnFile" class="icon-btn accent" aria-label="Choose a file"><i class="fa-solid fa-file-image"></i></button>
+    <button id="btnSettings" class="icon-btn" aria-label="Settings"><i class="fa-solid fa-gear"></i></button>
+  </header>
+
+  <main id="reader">
+    <div id="emptyState" class="empty-state">
+      <p class="empty-title">No pages yet</p>
+      <p class="empty-body">Photograph a page from a book and it'll be transcribed and translated to English.</p>
+      <div class="empty-actions">
+        <button id="btnCameraEmpty" class="btn-primary">Take a photo</button>
+        <button id="btnFileEmpty" class="btn-secondary">Choose a file</button>
+      </div>
+    </div>
+
+    <div id="loadingState" class="loading-state hidden">
+      <div class="spinner"></div>
+      <p id="loadingMessage">Reading the page&hellip;</p>
+      <p id="loadingElapsed" class="loading-elapsed">0s</p>
+    </div>
+
+    <div id="errorState" class="error-state hidden">
+      <p class="error-title">Couldn't process that page</p>
+      <p class="error-body" id="errorMessage"></p>
+      <button id="btnRetry" class="btn-primary">Try again</button>
+    </div>
+
+    <article id="content" class="content hidden">
+      <div class="lang-row">
+        <span class="lang-pill" id="langPill"></span>
+        <div class="view-toggle" id="viewToggle">
+          <button data-view="translated" class="toggle-btn active">English</button>
+          <button data-view="original" class="toggle-btn">Original</button>
+        </div>
+      </div>
+      <div id="textBody" class="text-body"></div>
+    </article>
+  </main>
+</div>
+
+<div id="settingsOverlay" class="overlay hidden">
+  <div class="sheet">
+    <div class="sheet-header">
+      <h2>Settings</h2>
+      <button id="btnCloseSettings" class="icon-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <section class="setting-group">
+      <label>Text size</label>
+      <div class="font-size-row">
+        <button id="fontDec" class="icon-btn small" aria-label="Smaller text">A&minus;</button>
+        <input type="range" id="fontSlider" min="14" max="28" step="1" value="19">
+        <button id="fontInc" class="icon-btn small" aria-label="Larger text">A+</button>
+      </div>
+    </section>
+
+    <section class="setting-group">
+      <label>Color scheme</label>
+      <div class="theme-row" id="themeRow">
+        <button data-theme="light" class="theme-swatch">Light</button>
+        <button data-theme="sepia" class="theme-swatch">Sepia</button>
+        <button data-theme="dark" class="theme-swatch">Dark</button>
+      </div>
+    </section>
+
+    <section class="setting-group">
+      <label for="modelSelect">Model</label>
+      <select id="modelSelect" class="select-input">
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+        <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+        <option value="gemma-4-31b-it">Gemma 4 31B</option>
+        <option value="gemma-4-26b-a4b-it">Gemma 4 26B (A4B)</option>
+      </select>
+    </section>
+
+    <section class="setting-group">
+      <label for="thinkingSelect">Thinking level</label>
+      <select id="thinkingSelect" class="select-input"></select>
+      <p class="hint">Available levels depend on the model chosen above.</p>
+    </section>
+
+    <section class="setting-group">
+      <label for="apiKeyInput">Gemini API key</label>
+      <div class="api-key-row" id="apiKeyRow">
+        <input type="password" id="apiKeyInput" placeholder="Paste your API key" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button id="btnToggleKey" class="icon-btn small" aria-label="Show key"><i class="fa-solid fa-eye"></i></button>
+      </div>
+      <p class="hint">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com</a>. It's stored only on this device.</p>
+    </section>
+  </div>
+</div>
+
+<input type="file" id="cameraInput" accept="image/*" capture="environment" class="visually-hidden">
+<input type="file" id="galleryInput" accept="image/*" class="visually-hidden">
+
+<script>
+(function(){
+  "use strict";
+
+  var THEME_COLORS = { light:"#FAF7F0", sepia:"#EFE0C0", dark:"#1B1917" };
+  var DEFAULT_MODEL = "gemini-3.5-flash-lite";
+  var DEFAULT_THINKING = "MINIMAL";
+  var THINKING_LABELS = { MINIMAL:"Minimal", LOW:"Low", MEDIUM:"Medium", HIGH:"High" };
+  var MODEL_LABELS = {
+    "gemini-3.5-flash-lite": "Gemini 3.5 Flash Lite",
+    "gemini-3.8-flash": "Gemini 3.8 Flash",
+    "gemma-4-31b-it": "Gemma 4 31B",
+    "gemma-4-26b-a4b-it": "Gemma 4 26B (A4B)"
+  };
+  var MAX_ATTEMPTS = 5;
+  var RETRY_DELAY_MS = 10000;
+  var PROMPT_TEXT = "Transcribe the text on this book page exactly as it appears, in its native language, then translate that text into English. Preserve paragraph breaks and reading order. Use markdown formatting (headings, italics, bold, blockquotes) only where the source page itself uses that kind of emphasis or structure.";
+
+  function getThinkingLevels(model){
+    if(model.indexOf("gemma") === 0) return ["MINIMAL","HIGH"];
+    if(model === "gemini-3.8-flash") return ["LOW","MEDIUM","HIGH"];
+    return ["MINIMAL","LOW","MEDIUM","HIGH"];
+  }
+
+  // ---------- State ----------
+  var settings = loadSettings();
+  var pages = loadPages();
+  reconcileInterruptedPages();
+  var currentIndex = pages.length ? pages.length - 1 : -1;
+  var currentView = "translated";
+  var pageImageCache = {};
+  var currentRetryPageId = null;
+  var pendingTimerInterval = null;
+  var pendingTimerPageId = null;
+
+  // ---------- Elements ----------
+  var el = {
+    body: document.body,
+    themeColorMeta: document.getElementById("themeColorMeta"),
+    toastContainer: document.getElementById("toastContainer"),
+    btnBack: document.getElementById("btnBack"),
+    btnForward: document.getElementById("btnForward"),
+    pageIndicator: document.getElementById("pageIndicator"),
+    btnCamera: document.getElementById("btnCamera"),
+    btnFile: document.getElementById("btnFile"),
+    btnCameraEmpty: document.getElementById("btnCameraEmpty"),
+    btnFileEmpty: document.getElementById("btnFileEmpty"),
+    btnSettings: document.getElementById("btnSettings"),
+    reader: document.getElementById("reader"),
+    emptyState: document.getElementById("emptyState"),
+    loadingState: document.getElementById("loadingState"),
+    loadingMessage: document.getElementById("loadingMessage"),
+    loadingElapsed: document.getElementById("loadingElapsed"),
+    errorState: document.getElementById("errorState"),
+    errorMessage: document.getElementById("errorMessage"),
+    btnRetry: document.getElementById("btnRetry"),
+    content: document.getElementById("content"),
+    langPill: document.getElementById("langPill"),
+    viewToggle: document.getElementById("viewToggle"),
+    textBody: document.getElementById("textBody"),
+
+    settingsOverlay: document.getElementById("settingsOverlay"),
+    btnCloseSettings: document.getElementById("btnCloseSettings"),
+    fontSlider: document.getElementById("fontSlider"),
+    fontDec: document.getElementById("fontDec"),
+    fontInc: document.getElementById("fontInc"),
+    themeRow: document.getElementById("themeRow"),
+    modelSelect: document.getElementById("modelSelect"),
+    thinkingSelect: document.getElementById("thinkingSelect"),
+    apiKeyInput: document.getElementById("apiKeyInput"),
+    apiKeyRow: document.getElementById("apiKeyRow"),
+    btnToggleKey: document.getElementById("btnToggleKey"),
+
+    cameraInput: document.getElementById("cameraInput"),
+    galleryInput: document.getElementById("galleryInput")
+  };
+
+  // ---------- Persistence ----------
+  function loadSettings(){
+    try{
+      var raw = localStorage.getItem("marginalia.settings");
+      var parsed = raw ? JSON.parse(raw) : {};
+      var model = parsed.model || DEFAULT_MODEL;
+      var levels = getThinkingLevels(model);
+      var thinkingLevel = (parsed.thinkingLevel && levels.indexOf(parsed.thinkingLevel) !== -1)
+        ? parsed.thinkingLevel
+        : (levels.indexOf(DEFAULT_THINKING) !== -1 ? DEFAULT_THINKING : levels[0]);
+      return {
+        fontSize: parsed.fontSize || 19,
+        theme: parsed.theme || "light",
+        apiKey: parsed.apiKey || "",
+        model: model,
+        thinkingLevel: thinkingLevel
+      };
+    }catch(e){ return { fontSize:19, theme:"light", apiKey:"", model:DEFAULT_MODEL, thinkingLevel:DEFAULT_THINKING }; }
+  }
+  function saveSettings(){
+    try{ localStorage.setItem("marginalia.settings", JSON.stringify(settings)); }catch(e){}
+  }
+  function loadPages(){
+    try{
+      var raw = localStorage.getItem("marginalia.pages");
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function savePages(){
+    try{ localStorage.setItem("marginalia.pages", JSON.stringify(pages)); }catch(e){}
+  }
+  function reconcileInterruptedPages(){
+    var changed = false;
+    for(var i=0;i<pages.length;i++){
+      if(pages[i].status === "pending"){
+        pages[i].status = "error";
+        pages[i].errorMessage = "Processing was interrupted. Try again.";
+        pages[i].statusMessage = null;
+        changed = true;
+      }
+    }
+    if(changed) savePages();
+  }
+  function findPageIndex(id){
+    for(var i=0;i<pages.length;i++){ if(pages[i].id === id) return i; }
+    return -1;
+  }
+
+  // ---------- Apply settings ----------
+  function populateThinkingSelect(){
+    var levels = getThinkingLevels(settings.model);
+    if(levels.indexOf(settings.thinkingLevel) === -1){
+      settings.thinkingLevel = levels.indexOf(DEFAULT_THINKING) !== -1 ? DEFAULT_THINKING : levels[0];
+    }
+    el.thinkingSelect.innerHTML = "";
+    for(var i=0;i<levels.length;i++){
+      var opt = document.createElement("option");
+      opt.value = levels[i];
+      opt.textContent = THINKING_LABELS[levels[i]];
+      el.thinkingSelect.appendChild(opt);
+    }
+    el.thinkingSelect.value = settings.thinkingLevel;
+  }
+
+  function applySettings(){
+    el.body.className = "theme-" + settings.theme;
+    el.body.style.setProperty("--reading-size", settings.fontSize + "px");
+    el.themeColorMeta.setAttribute("content", THEME_COLORS[settings.theme] || THEME_COLORS.light);
+    el.fontSlider.value = settings.fontSize;
+    el.apiKeyInput.value = settings.apiKey;
+    el.modelSelect.value = settings.model;
+    populateThinkingSelect();
+    var buttons = el.themeRow.querySelectorAll(".theme-swatch");
+    for(var i=0;i<buttons.length;i++){
+      buttons[i].classList.toggle("active", buttons[i].dataset.theme === settings.theme);
+    }
+  }
+
+  // ---------- Minimal markdown ----------
+  function escapeHtml(s){
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function markdownToHtml(md){
+    if(!md) return "";
+    var lines = escapeHtml(md).replace(/\r\n/g,"\n").split("\n");
+    var html = "";
+    var quoteBuffer = [];
+
+    function inline(text){
+      text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      text = text.replace(/(^|[^*])\*(?!\*)(.+?)\*(?!\*)/g, "$1<em>$2</em>");
+      text = text.replace(/_(.+?)_/g, "<em>$1</em>");
+      return text;
+    }
+    function flushQuote(){
+      if(quoteBuffer.length){
+        html += "<blockquote>" + quoteBuffer.map(function(l){ return "<p>" + inline(l) + "</p>"; }).join("") + "</blockquote>";
+        quoteBuffer = [];
+      }
+    }
+
+    for(var i=0;i<lines.length;i++){
+      var trimmed = lines[i].trim();
+      if(trimmed === ""){ flushQuote(); continue; }
+      var h = trimmed.match(/^(#{1,3})\s+(.*)$/);
+      if(h){
+        flushQuote();
+        var level = h[1].length;
+        html += "<h" + level + ">" + inline(h[2]) + "</h" + level + ">";
+        continue;
+      }
+      var q = trimmed.match(/^>\s?(.*)$/);
+      if(q){
+        quoteBuffer.push(q[1]);
+        continue;
+      }
+      flushQuote();
+      html += "<p>" + inline(trimmed) + "</p>";
+    }
+    flushQuote();
+    return html || "<p></p>";
+  }
+
+  // ---------- Toasts ----------
+  function showToast(message){
+    var toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = message;
+    el.toastContainer.appendChild(toast);
+    requestAnimationFrame(function(){ toast.classList.add("show"); });
+    setTimeout(function(){
+      toast.classList.remove("show");
+      setTimeout(function(){ toast.remove(); }, 300);
+    }, 3800);
+  }
+
+  // ---------- Pending elapsed timer ----------
+  function stopPendingTimer(){
+    if(pendingTimerInterval){ clearInterval(pendingTimerInterval); pendingTimerInterval = null; }
+    pendingTimerPageId = null;
+  }
+  function startPendingTimerFor(page){
+    stopPendingTimer();
+    pendingTimerPageId = page.id;
+    var startedAt = page.startedAt;
+    function tick(){
+      var secs = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      el.loadingElapsed.textContent = secs + "s";
+    }
+    tick();
+    pendingTimerInterval = setInterval(tick, 500);
+  }
+
+  // ---------- Rendering ----------
+  function updateNav(){
+    el.pageIndicator.textContent = pages.length ? (currentIndex + 1) + " / " + pages.length : "0 / 0";
+    el.btnBack.disabled = currentIndex <= 0;
+    el.btnForward.disabled = currentIndex >= pages.length - 1;
+  }
+
+  function showState(name){
+    el.emptyState.classList.toggle("hidden", name !== "empty");
+    el.loadingState.classList.toggle("hidden", name !== "loading");
+    el.errorState.classList.toggle("hidden", name !== "error");
+    el.content.classList.toggle("hidden", name !== "content");
+  }
+
+  function renderContent(page){
+    var modelLabel = MODEL_LABELS[page.model] || page.model;
+    var thinkingLabel = THINKING_LABELS[page.thinkingLevel] || page.thinkingLevel;
+    var langPart = page.language ? (page.language + " \u2192 English") : "English";
+    el.langPill.textContent = "(" + modelLabel + " with " + thinkingLabel + " thinking) " + langPart;
+    var toggles = el.viewToggle.querySelectorAll(".toggle-btn");
+    for(var i=0;i<toggles.length;i++){
+      toggles[i].classList.toggle("active", toggles[i].dataset.view === currentView);
+    }
+    var text = currentView === "original" ? page.original : page.translated;
+    el.textBody.innerHTML = markdownToHtml(text);
+    el.reader.scrollTop = 0;
+  }
+
+  function render(){
+    updateNav();
+    if(pages.length === 0){
+      stopPendingTimer();
+      showState("empty");
+      return;
+    }
+    if(currentIndex < 0) currentIndex = pages.length - 1;
+    var page = pages[currentIndex];
+
+    if(page.status === "pending"){
+      if(pendingTimerPageId !== page.id){ startPendingTimerFor(page); }
+      el.loadingMessage.textContent = page.statusMessage || "Working\u2026";
+      showState("loading");
+      return;
+    }
+
+    stopPendingTimer();
+
+    if(page.status === "error"){
+      currentRetryPageId = page.id;
+      el.errorMessage.textContent = page.errorMessage || "Something went wrong.";
+      showState("error");
+      return;
+    }
+
+    showState("content");
+    renderContent(page);
+  }
+
+  // ---------- Navigation ----------
+  el.btnBack.addEventListener("click", function(){
+    if(currentIndex > 0){ currentIndex--; render(); }
+  });
+  el.btnForward.addEventListener("click", function(){
+    if(currentIndex < pages.length - 1){ currentIndex++; render(); }
+  });
+  el.viewToggle.addEventListener("click", function(e){
+    var btn = e.target.closest(".toggle-btn");
+    if(!btn) return;
+    currentView = btn.dataset.view;
+    if(pages[currentIndex]) renderContent(pages[currentIndex]);
+  });
+
+  // Swipe navigation
+  (function(){
+    var startX = 0, startY = 0, tracking = false;
+    el.reader.addEventListener("touchstart", function(e){
+      if(el.content.classList.contains("hidden")) return;
+      var t = e.touches[0];
+      startX = t.clientX; startY = t.clientY; tracking = true;
+    }, { passive:true });
+    el.reader.addEventListener("touchend", function(e){
+      if(!tracking) return;
+      tracking = false;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - startX;
+      var dy = t.clientY - startY;
+      if(Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2){
+        if(dx < 0 && currentIndex < pages.length - 1){ currentIndex++; render(); }
+        else if(dx > 0 && currentIndex > 0){ currentIndex--; render(); }
+      }
+    }, { passive:true });
+  })();
+
+  // ---------- Settings sheet ----------
+  function openSettings(){ el.settingsOverlay.classList.remove("hidden"); }
+  function closeSettings(){ el.settingsOverlay.classList.add("hidden"); }
+  el.btnSettings.addEventListener("click", openSettings);
+  el.btnCloseSettings.addEventListener("click", closeSettings);
+  el.settingsOverlay.addEventListener("click", function(e){ if(e.target === el.settingsOverlay) closeSettings(); });
+
+  el.fontSlider.addEventListener("input", function(){
+    settings.fontSize = parseInt(el.fontSlider.value, 10);
+    applySettings(); saveSettings();
+  });
+  el.fontDec.addEventListener("click", function(){
+    settings.fontSize = Math.max(14, settings.fontSize - 1);
+    applySettings(); saveSettings();
+  });
+  el.fontInc.addEventListener("click", function(){
+    settings.fontSize = Math.min(28, settings.fontSize + 1);
+    applySettings(); saveSettings();
+  });
+  el.themeRow.addEventListener("click", function(e){
+    var btn = e.target.closest(".theme-swatch");
+    if(!btn) return;
+    settings.theme = btn.dataset.theme;
+    applySettings(); saveSettings();
+  });
+  el.modelSelect.addEventListener("change", function(){
+    settings.model = el.modelSelect.value;
+    populateThinkingSelect();
+    saveSettings();
+  });
+  el.thinkingSelect.addEventListener("change", function(){
+    settings.thinkingLevel = el.thinkingSelect.value;
+    saveSettings();
+  });
+  el.apiKeyInput.addEventListener("change", function(){
+    settings.apiKey = el.apiKeyInput.value.trim();
+    saveSettings();
+  });
+  var keyVisible = false;
+  el.btnToggleKey.addEventListener("click", function(){
+    keyVisible = !keyVisible;
+    el.apiKeyInput.type = keyVisible ? "text" : "password";
+    el.btnToggleKey.innerHTML = keyVisible ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
+  });
+
+  // ---------- Add page: camera / file ----------
+  function requireApiKeyThen(action){
+    if(!settings.apiKey){
+      openSettings();
+      el.apiKeyRow.classList.add("flash");
+      el.apiKeyInput.focus();
+      setTimeout(function(){ el.apiKeyRow.classList.remove("flash"); }, 1600);
+      return;
+    }
+    action();
+  }
+  el.btnCamera.addEventListener("click", function(){ requireApiKeyThen(function(){ el.cameraInput.click(); }); });
+  el.btnFile.addEventListener("click", function(){ requireApiKeyThen(function(){ el.galleryInput.click(); }); });
+  el.btnCameraEmpty.addEventListener("click", function(){ requireApiKeyThen(function(){ el.cameraInput.click(); }); });
+  el.btnFileEmpty.addEventListener("click", function(){ requireApiKeyThen(function(){ el.galleryInput.click(); }); });
+
+  el.cameraInput.addEventListener("change", function(){
+    if(el.cameraInput.files[0]) beginNewPage(el.cameraInput.files[0]);
+    el.cameraInput.value = "";
+  });
+  el.galleryInput.addEventListener("change", function(){
+    if(el.galleryInput.files[0]) beginNewPage(el.galleryInput.files[0]);
+    el.galleryInput.value = "";
+  });
+
+  el.btnRetry.addEventListener("click", function(){
+    if(currentRetryPageId) retryPage(currentRetryPageId);
+  });
+
+  // ---------- Image compression ----------
+  function compressImage(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var img = new Image();
+        img.onload = function(){
+          var width = img.width, height = img.height;
+          var maxDim = 3600;
+          if(width > maxDim || height > maxDim){
+            if(width > height){ height = Math.round(height * maxDim / width); width = maxDim; }
+            else { width = Math.round(width * maxDim / height); height = maxDim; }
+          }
+          var canvas = document.createElement("canvas");
+          canvas.width = width; canvas.height = height;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          var dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+          resolve({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" });
+        };
+        img.onerror = function(){ reject(new Error("That image couldn't be read. Try a different photo.")); };
+        img.src = e.target.result;
+      };
+      reader.onerror = function(){ reject(new Error("That file couldn't be read.")); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---------- Gemini call ----------
+  function transcribeAndTranslate(apiKey, base64, mimeType, model, thinkingLevel){
+    var endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(apiKey);
+    var body = {
+      contents: [{
+        role: "user",
+        parts: [
+          { text: PROMPT_TEXT },
+          { inline_data: { mime_type: mimeType, data: base64 } }
+        ]
+      }],
+      generationConfig: {
+        thinkingConfig: { thinkingLevel: thinkingLevel },
+        mediaResolution: "MEDIA_RESOLUTION_HIGH",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            language: { type: "STRING", description: "Name of the language the page is written in, in English, e.g. 'French' or 'Japanese'." },
+            original_text: { type: "STRING", description: "Transcription of the page in its original language, formatted in markdown." },
+            translated_text: { type: "STRING", description: "English translation of the page, formatted in markdown." }
+          },
+          required: ["language", "original_text", "translated_text"]
+        }
+      }
+    };
+
+    return fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function(res){
+      if(!res.ok){
+        return res.json().catch(function(){ return null; }).then(function(errJson){
+          var msg = "Request failed (" + res.status + ").";
+          if(res.status === 400 || res.status === 403) msg = "That API key was rejected. Check it in Settings.";
+          else if(res.status === 404) msg = "That model isn't available for this key.";
+          else if(res.status === 429) msg = "Rate limit reached. Wait a moment and try again.";
+          else if(res.status === 503) msg = "This model is experiencing high demand.";
+          else if(errJson && errJson.error && errJson.error.message) msg = errJson.error.message;
+          var e = new Error(msg);
+          e.code = (errJson && errJson.error && errJson.error.code) || res.status;
+          e.status = errJson && errJson.error && errJson.error.status;
+          throw e;
+        });
+      }
+      return res.json();
+    }).then(function(data){
+      var parts = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+      var textPart = parts && parts.filter(function(p){ return p.text; })[0];
+      if(!textPart) throw new Error("No text came back from the page. Try again.");
+      var parsed;
+      try{ parsed = JSON.parse(textPart.text); }
+      catch(e){ throw new Error("Couldn't understand the response. Try again."); }
+      if(!parsed.original_text || !parsed.translated_text){
+        throw new Error("The response was incomplete. Try again.");
+      }
+      return parsed;
+    });
+  }
+
+  function isRetryableError(err){
+    return err && (err.status === "UNAVAILABLE" || err.code === 503);
+  }
+
+  function transcribeAndTranslateWithRetry(apiKey, base64, mimeType, model, thinkingLevel, onStatus){
+    function attempt(n){
+      return transcribeAndTranslate(apiKey, base64, mimeType, model, thinkingLevel).catch(function(err){
+        if(isRetryableError(err) && n < MAX_ATTEMPTS){
+          onStatus("High demand right now \u2014 retrying (attempt " + (n + 1) + " of " + MAX_ATTEMPTS + ")\u2026");
+          return new Promise(function(resolve){ setTimeout(resolve, RETRY_DELAY_MS); }).then(function(){
+            onStatus("Translating\u2026");
+            return attempt(n + 1);
+          });
+        }
+        throw err;
+      });
+    }
+    return attempt(1);
+  }
+
+  // ---------- Process flow ----------
+  function beginNewPage(file){
+    var page = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      status: "pending",
+      statusMessage: "Reading the page\u2026",
+      model: settings.model,
+      thinkingLevel: settings.thinkingLevel,
+      language: null,
+      original: null,
+      translated: null,
+      errorMessage: null,
+      startedAt: Date.now(),
+      createdAt: Date.now()
+    };
+    pages.push(page);
+    savePages();
+    currentIndex = pages.length - 1;
+    currentView = "translated";
+    render();
+    runProcessing(page, file);
+  }
+
+  function runProcessing(page, file){
+    compressImage(file).then(function(img){
+      pageImageCache[page.id] = img;
+      updatePageStatusMessage(page.id, "Translating\u2026");
+      return transcribeAndTranslateWithRetry(settings.apiKey, img.base64, img.mimeType, page.model, page.thinkingLevel, function(msg){
+        updatePageStatusMessage(page.id, msg);
+      });
+    }).then(function(result){
+      finalizePage(page.id, {
+        status: "done",
+        language: result.language,
+        original: result.original_text,
+        translated: result.translated_text
+      });
+    }).catch(function(err){
+      finalizePage(page.id, { status: "error", errorMessage: (err && err.message) || "Something went wrong." });
+    });
+  }
+
+  function retryPage(id){
+    var idx = findPageIndex(id);
+    if(idx === -1) return;
+    var page = pages[idx];
+    var img = pageImageCache[id];
+    if(!img){
+      page.errorMessage = "Couldn't retry \u2014 the original photo is no longer available for this session. Please add the page again.";
+      savePages();
+      if(currentIndex === idx) render();
+      return;
+    }
+    page.status = "pending";
+    page.statusMessage = "Translating\u2026";
+    page.startedAt = Date.now();
+    page.errorMessage = null;
+    savePages();
+    if(currentIndex === idx) render();
+
+    transcribeAndTranslateWithRetry(settings.apiKey, img.base64, img.mimeType, page.model, page.thinkingLevel, function(msg){
+      updatePageStatusMessage(id, msg);
+    }).then(function(result){
+      finalizePage(id, {
+        status: "done",
+        language: result.language,
+        original: result.original_text,
+        translated: result.translated_text
+      });
+    }).catch(function(err){
+      finalizePage(id, { status: "error", errorMessage: (err && err.message) || "Something went wrong." });
+    });
+  }
+
+  function updatePageStatusMessage(id, message){
+    var idx = findPageIndex(id);
+    if(idx === -1) return;
+    pages[idx].statusMessage = message;
+    savePages();
+    if(currentIndex === idx) render();
+  }
+
+  function finalizePage(id, patch){
+    var idx = findPageIndex(id);
+    if(idx === -1) return;
+    var page = pages[idx];
+    page.status = patch.status;
+    if(patch.language !== undefined) page.language = patch.language;
+    if(patch.original !== undefined) page.original = patch.original;
+    if(patch.translated !== undefined) page.translated = patch.translated;
+    if(patch.errorMessage !== undefined) page.errorMessage = patch.errorMessage;
+    page.statusMessage = null;
+    savePages();
+
+    var displayNumber = idx + 1;
+    if(patch.status === "done"){
+      showToast("Page " + displayNumber + " has finished processing");
+    } else {
+      showToast("Page " + displayNumber + " could not be processed");
+    }
+    if(currentIndex === idx){ render(); } else { updateNav(); }
+  }
+
+  // ---------- Init ----------
+  applySettings();
+  render();
+})();
+</script>
+</body>
+</html>
