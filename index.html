@@ -119,6 +119,15 @@
     text-align:center;
     font-variant-numeric: tabular-nums;
   }
+  .running-note{
+    font-size:11.5px;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    padding:3px 9px;
+    border-radius:20px;
+    white-space:nowrap;
+    font-variant-numeric: tabular-nums;
+  }
   .spacer{ flex:1; }
 
   /* ---- Reader area ---- */
@@ -372,6 +381,7 @@
   }
   .api-key-row input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
   .api-key-row.flash input{ outline:2px solid var(--accent); outline-offset:1px; }
+  .setting-group.flash{ outline:2px solid var(--accent); outline-offset:4px; border-radius:8px; }
   .hint{ font-size:12.5px; color: var(--text-muted); margin:8px 0 0; }
   .select-input{
     width:100%;
@@ -389,6 +399,35 @@
     background-repeat: no-repeat;
   }
   .select-input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .text-input{
+    width:100%;
+    padding:11px 12px;
+    border-radius:9px;
+    border:1.5px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size:14.5px;
+  }
+  .text-input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .menu-sheet .sheet{ padding-bottom: calc(10px + var(--safe-bottom)); }
+  .menu-option{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:15px 4px;
+    font-size:15.5px;
+    text-align:left;
+    border-bottom:1px solid var(--border);
+  }
+  .menu-option:last-child{ border-bottom:none; }
+  .menu-option i{ width:20px; text-align:center; color: var(--accent); }
+  .menu-option:disabled{ opacity:0.35; }
+  .menu-option:not(:disabled):active{ background: var(--surface-2); }
+  .menu-option-text{ display:flex; flex-direction:column; gap:2px; }
+  .menu-option-sub{ font-size:12.5px; color: var(--text-muted); }
 
   :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 </style>
@@ -442,8 +481,10 @@
     <div class="page-indicator" id="pageIndicator">0 / 0</div>
     <button id="btnForward" class="icon-btn" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
     <div class="spacer"></div>
+    <span id="runningNote" class="running-note hidden"></span>
+    <div class="spacer"></div>
     <button id="btnCamera" class="icon-btn accent" aria-label="Take a photo"><i class="fa-solid fa-camera"></i></button>
-    <button id="btnFile" class="icon-btn accent" aria-label="Choose a file"><i class="fa-solid fa-file-image"></i></button>
+    <button id="btnFileMenu" class="icon-btn accent" aria-label="More ways to add a page"><i class="fa-solid fa-ellipsis"></i></button>
     <button id="btnSettings" class="icon-btn" aria-label="Settings"><i class="fa-solid fa-gear"></i></button>
   </header>
 
@@ -475,34 +516,85 @@
     </section>
 
     <section class="setting-group">
-      <label for="modelSelect">Model</label>
-      <select id="modelSelect" class="select-input">
-        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
-        <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
-        <option value="gemma-4-31b-it">Gemma 4 31B</option>
-        <option value="gemma-4-26b-a4b-it">Gemma 4 26B (A4B)</option>
+      <label for="providerSelect">Provider type</label>
+      <select id="providerSelect" class="select-input">
+        <option value="gemini">Gemini</option>
+        <option value="openai">OpenAI-Compatible</option>
       </select>
     </section>
+
+    <div id="geminiSettings">
+      <section class="setting-group">
+        <label for="modelSelect">Model</label>
+        <select id="modelSelect" class="select-input">
+          <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+          <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+          <option value="gemma-4-31b-it">Gemma 4 31B</option>
+          <option value="gemma-4-26b-a4b-it">Gemma 4 26B (A4B)</option>
+        </select>
+      </section>
+
+      <section class="setting-group">
+        <label for="apiKeyInput">Gemini API key</label>
+        <div class="api-key-row" id="apiKeyRow">
+          <input type="password" id="apiKeyInput" placeholder="Paste your API key" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button id="btnToggleKey" class="icon-btn small" aria-label="Show key"><i class="fa-solid fa-eye"></i></button>
+        </div>
+        <p class="hint">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com</a>. It's stored only on this device.</p>
+      </section>
+    </div>
+
+    <div id="openaiSettings">
+      <section class="setting-group">
+        <label for="openaiBaseUrlInput">Base URL</label>
+        <input type="text" id="openaiBaseUrlInput" class="text-input" placeholder="http://localhost:8080/v1" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <p class="hint">The OpenAI-compatible endpoint, e.g. your local Llama.cpp server.</p>
+      </section>
+
+      <section class="setting-group">
+        <label for="openaiApiKeyInput">API key</label>
+        <div class="api-key-row" id="openaiApiKeyRow">
+          <input type="password" id="openaiApiKeyInput" placeholder="Optional, if your server requires one" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button id="btnToggleOpenaiKey" class="icon-btn small" aria-label="Show key"><i class="fa-solid fa-eye"></i></button>
+        </div>
+      </section>
+
+      <section class="setting-group">
+        <label for="openaiModelInput">Model name</label>
+        <input type="text" id="openaiModelInput" class="text-input" placeholder="e.g. qwen3-vl-8b-instruct" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </section>
+    </div>
 
     <section class="setting-group">
       <label for="thinkingSelect">Thinking level</label>
       <select id="thinkingSelect" class="select-input"></select>
-      <p class="hint">Available levels depend on the model chosen above.</p>
-    </section>
-
-    <section class="setting-group">
-      <label for="apiKeyInput">Gemini API key</label>
-      <div class="api-key-row" id="apiKeyRow">
-        <input type="password" id="apiKeyInput" placeholder="Paste your API key" autocomplete="off" autocapitalize="off" spellcheck="false">
-        <button id="btnToggleKey" class="icon-btn small" aria-label="Show key"><i class="fa-solid fa-eye"></i></button>
-      </div>
-      <p class="hint">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com</a>. It's stored only on this device.</p>
+      <p class="hint" id="thinkingHint">Available levels depend on the model chosen above.</p>
     </section>
 
     <section class="setting-group">
       <label>Data management</label>
       <button id="btnClearAllPages" class="btn-danger"><i class="fa-solid fa-trash-can"></i> Clear all pages from memory</button>
     </section>
+  </div>
+</div>
+
+<div id="fileMenuOverlay" class="overlay menu-sheet hidden">
+  <div class="sheet">
+    <div class="sheet-header">
+      <h2>Add a page</h2>
+      <button id="btnCloseFileMenu" class="icon-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <button id="menuLoadFile" class="menu-option">
+      <i class="fa-solid fa-file-image"></i>
+      <span class="menu-option-text">Load from file</span>
+    </button>
+    <button id="menuReworkPage" class="menu-option">
+      <i class="fa-solid fa-arrows-rotate"></i>
+      <span class="menu-option-text">
+        Rework this page
+        <span class="menu-option-sub">Retake the photo using the current model settings</span>
+      </span>
+    </button>
   </div>
 </div>
 
@@ -514,6 +606,7 @@
   "use strict";
 
   var THEME_COLORS = { light:"#FAF7F0", sepia:"#EFE0C0", dark:"#1B1917" };
+  var DEFAULT_PROVIDER = "gemini";
   var DEFAULT_MODEL = "gemini-3.5-flash-lite";
   var DEFAULT_THINKING = "MINIMAL";
   var THINKING_LABELS = { MINIMAL:"Minimal", LOW:"Low", MEDIUM:"Medium", HIGH:"High" };
@@ -523,11 +616,17 @@
     "gemma-4-31b-it": "Gemma 4 31B",
     "gemma-4-26b-a4b-it": "Gemma 4 26B (A4B)"
   };
+  // Maps a thinking level to a "reasoning_budget" (max thinking tokens) sent to
+  // an OpenAI-compatible / Llama.cpp server. HIGH is intentionally omitted from
+  // this map so no cap is sent at all, i.e. unlimited thinking.
+  var OPENAI_REASONING_BUDGETS = { MINIMAL:0, LOW:512, MEDIUM:2048 };
+  var OPENAI_THINKING_LEVELS = ["MINIMAL","LOW","MEDIUM","HIGH"];
   var MAX_ATTEMPTS = 5;
   var RETRY_DELAY_MS = 10000;
   var PROMPT_TEXT = "Transcribe the text on this book page exactly as it appears, in its native language, then translate that text into English. Preserve paragraph breaks and reading order. Use markdown formatting (headings, italics, bold, blockquotes) only where the source page itself uses that kind of emphasis or structure.";
 
-  function getThinkingLevels(model){
+  function getThinkingLevels(providerType, model){
+    if(providerType === "openai") return OPENAI_THINKING_LEVELS;
     if(model.indexOf("gemma") === 0) return ["MINIMAL","HIGH"];
     if(model === "gemini-3.8-flash") return ["LOW","MEDIUM","HIGH"];
     return ["MINIMAL","LOW","MEDIUM","HIGH"];
@@ -552,8 +651,9 @@
     btnBack: document.getElementById("btnBack"),
     btnForward: document.getElementById("btnForward"),
     pageIndicator: document.getElementById("pageIndicator"),
+    runningNote: document.getElementById("runningNote"),
     btnCamera: document.getElementById("btnCamera"),
-    btnFile: document.getElementById("btnFile"),
+    btnFileMenu: document.getElementById("btnFileMenu"),
     btnCameraEmpty: document.getElementById("btnCameraEmpty"),
     btnFileEmpty: document.getElementById("btnFileEmpty"),
     btnSettings: document.getElementById("btnSettings"),
@@ -577,12 +677,26 @@
     fontDec: document.getElementById("fontDec"),
     fontInc: document.getElementById("fontInc"),
     themeRow: document.getElementById("themeRow"),
+    providerSelect: document.getElementById("providerSelect"),
+    geminiSettings: document.getElementById("geminiSettings"),
+    openaiSettings: document.getElementById("openaiSettings"),
     modelSelect: document.getElementById("modelSelect"),
     thinkingSelect: document.getElementById("thinkingSelect"),
+    thinkingHint: document.getElementById("thinkingHint"),
     apiKeyInput: document.getElementById("apiKeyInput"),
     apiKeyRow: document.getElementById("apiKeyRow"),
     btnToggleKey: document.getElementById("btnToggleKey"),
+    openaiBaseUrlInput: document.getElementById("openaiBaseUrlInput"),
+    openaiApiKeyInput: document.getElementById("openaiApiKeyInput"),
+    openaiApiKeyRow: document.getElementById("openaiApiKeyRow"),
+    btnToggleOpenaiKey: document.getElementById("btnToggleOpenaiKey"),
+    openaiModelInput: document.getElementById("openaiModelInput"),
     btnClearAllPages: document.getElementById("btnClearAllPages"),
+
+    fileMenuOverlay: document.getElementById("fileMenuOverlay"),
+    btnCloseFileMenu: document.getElementById("btnCloseFileMenu"),
+    menuLoadFile: document.getElementById("menuLoadFile"),
+    menuReworkPage: document.getElementById("menuReworkPage"),
 
     cameraInput: document.getElementById("cameraInput"),
     galleryInput: document.getElementById("galleryInput")
@@ -594,18 +708,32 @@
       var raw = localStorage.getItem("marginalia.settings");
       var parsed = raw ? JSON.parse(raw) : {};
       var model = parsed.model || DEFAULT_MODEL;
-      var levels = getThinkingLevels(model);
+      var levels = getThinkingLevels("gemini", model);
       var thinkingLevel = (parsed.thinkingLevel && levels.indexOf(parsed.thinkingLevel) !== -1)
         ? parsed.thinkingLevel
         : (levels.indexOf(DEFAULT_THINKING) !== -1 ? DEFAULT_THINKING : levels[0]);
+      var openaiThinkingLevel = (parsed.openaiThinkingLevel && OPENAI_THINKING_LEVELS.indexOf(parsed.openaiThinkingLevel) !== -1)
+        ? parsed.openaiThinkingLevel
+        : DEFAULT_THINKING;
       return {
         fontSize: parsed.fontSize || 19,
         theme: parsed.theme || "light",
+        providerType: (parsed.providerType === "openai") ? "openai" : DEFAULT_PROVIDER,
         apiKey: parsed.apiKey || "",
         model: model,
-        thinkingLevel: thinkingLevel
+        thinkingLevel: thinkingLevel,
+        openaiBaseUrl: parsed.openaiBaseUrl || "",
+        openaiApiKey: parsed.openaiApiKey || "",
+        openaiModel: parsed.openaiModel || "",
+        openaiThinkingLevel: openaiThinkingLevel
       };
-    }catch(e){ return { fontSize:19, theme:"light", apiKey:"", model:DEFAULT_MODEL, thinkingLevel:DEFAULT_THINKING }; }
+    }catch(e){
+      return {
+        fontSize:19, theme:"light", providerType: DEFAULT_PROVIDER,
+        apiKey:"", model:DEFAULT_MODEL, thinkingLevel:DEFAULT_THINKING,
+        openaiBaseUrl:"", openaiApiKey:"", openaiModel:"", openaiThinkingLevel:DEFAULT_THINKING
+      };
+    }
   }
   function saveSettings(){
     try{ localStorage.setItem("marginalia.settings", JSON.stringify(settings)); }catch(e){}
@@ -637,10 +765,20 @@
   }
 
   // ---------- Apply settings ----------
+  function activeThinkingLevel(){
+    return settings.providerType === "openai" ? settings.openaiThinkingLevel : settings.thinkingLevel;
+  }
+  function setActiveThinkingLevel(level){
+    if(settings.providerType === "openai") settings.openaiThinkingLevel = level;
+    else settings.thinkingLevel = level;
+  }
+
   function populateThinkingSelect(){
-    var levels = getThinkingLevels(settings.model);
-    if(levels.indexOf(settings.thinkingLevel) === -1){
-      settings.thinkingLevel = levels.indexOf(DEFAULT_THINKING) !== -1 ? DEFAULT_THINKING : levels[0];
+    var levels = getThinkingLevels(settings.providerType, settings.model);
+    var current = activeThinkingLevel();
+    if(levels.indexOf(current) === -1){
+      current = levels.indexOf(DEFAULT_THINKING) !== -1 ? DEFAULT_THINKING : levels[0];
+      setActiveThinkingLevel(current);
     }
     el.thinkingSelect.innerHTML = "";
     for(var i=0;i<levels.length;i++){
@@ -649,7 +787,16 @@
       opt.textContent = THINKING_LABELS[levels[i]];
       el.thinkingSelect.appendChild(opt);
     }
-    el.thinkingSelect.value = settings.thinkingLevel;
+    el.thinkingSelect.value = current;
+    el.thinkingHint.textContent = (settings.providerType === "openai")
+      ? "Minimal disables thinking; High leaves it uncapped."
+      : "Available levels depend on the model chosen above.";
+  }
+
+  function updateProviderVisibility(){
+    var isOpenAI = settings.providerType === "openai";
+    el.geminiSettings.classList.toggle("hidden", isOpenAI);
+    el.openaiSettings.classList.toggle("hidden", !isOpenAI);
   }
 
   function applySettings(){
@@ -657,8 +804,13 @@
     el.body.style.setProperty("--reading-size", settings.fontSize + "px");
     el.themeColorMeta.setAttribute("content", THEME_COLORS[settings.theme] || THEME_COLORS.light);
     el.fontSlider.value = settings.fontSize;
+    el.providerSelect.value = settings.providerType;
     el.apiKeyInput.value = settings.apiKey;
     el.modelSelect.value = settings.model;
+    el.openaiBaseUrlInput.value = settings.openaiBaseUrl;
+    el.openaiApiKeyInput.value = settings.openaiApiKey;
+    el.openaiModelInput.value = settings.openaiModel;
+    updateProviderVisibility();
     populateThinkingSelect();
     var buttons = el.themeRow.querySelectorAll(".theme-swatch");
     for(var i=0;i<buttons.length;i++){
@@ -783,6 +935,15 @@
     el.pageIndicator.textContent = pages.length ? (currentIndex + 1) + " / " + pages.length : "0 / 0";
     el.btnBack.disabled = currentIndex <= 0;
     el.btnForward.disabled = currentIndex >= pages.length - 1;
+
+    var runningCount = 0;
+    for(var i=0;i<pages.length;i++){ if(pages[i].status === "pending") runningCount++; }
+    if(runningCount > 0){
+      el.runningNote.textContent = runningCount + " running";
+      el.runningNote.classList.remove("hidden");
+    } else {
+      el.runningNote.classList.add("hidden");
+    }
   }
 
   function showState(name){
@@ -793,7 +954,7 @@
   }
 
   function renderContent(page){
-    var modelLabel = MODEL_LABELS[page.model] || page.model;
+    var modelLabel = MODEL_LABELS[page.model] || page.model || "unnamed model";
     var thinkingLabel = THINKING_LABELS[page.thinkingLevel] || page.thinkingLevel;
     var langPart = page.language ? (page.language + " \u2192 English") : "English";
     el.langPill.textContent = "(" + modelLabel + " with " + thinkingLabel + " thinking) " + langPart;
@@ -898,13 +1059,19 @@
     settings.theme = btn.dataset.theme;
     applySettings(); saveSettings();
   });
+  el.providerSelect.addEventListener("change", function(){
+    settings.providerType = el.providerSelect.value === "openai" ? "openai" : "gemini";
+    updateProviderVisibility();
+    populateThinkingSelect();
+    saveSettings();
+  });
   el.modelSelect.addEventListener("change", function(){
     settings.model = el.modelSelect.value;
     populateThinkingSelect();
     saveSettings();
   });
   el.thinkingSelect.addEventListener("change", function(){
-    settings.thinkingLevel = el.thinkingSelect.value;
+    setActiveThinkingLevel(el.thinkingSelect.value);
     saveSettings();
   });
   el.apiKeyInput.addEventListener("change", function(){
@@ -918,9 +1085,38 @@
     el.btnToggleKey.innerHTML = keyVisible ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
   });
 
-  // ---------- Add page: camera / file ----------
-  function requireApiKeyThen(action){
-    if(!settings.apiKey){
+  el.openaiBaseUrlInput.addEventListener("change", function(){
+    settings.openaiBaseUrl = el.openaiBaseUrlInput.value.trim();
+    saveSettings();
+  });
+  el.openaiApiKeyInput.addEventListener("change", function(){
+    settings.openaiApiKey = el.openaiApiKeyInput.value.trim();
+    saveSettings();
+  });
+  el.openaiModelInput.addEventListener("change", function(){
+    settings.openaiModel = el.openaiModelInput.value.trim();
+    saveSettings();
+  });
+  var openaiKeyVisible = false;
+  el.btnToggleOpenaiKey.addEventListener("click", function(){
+    openaiKeyVisible = !openaiKeyVisible;
+    el.openaiApiKeyInput.type = openaiKeyVisible ? "text" : "password";
+    el.btnToggleOpenaiKey.innerHTML = openaiKeyVisible ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
+  });
+
+  // ---------- Add page: camera / file / rework ----------
+  var reworkTargetId = null;
+
+  function requireCredentialsThen(action){
+    if(settings.providerType === "openai"){
+      if(!settings.openaiBaseUrl || !settings.openaiModel){
+        openSettings();
+        el.openaiBaseUrlInput.closest(".setting-group").classList.add("flash");
+        (settings.openaiBaseUrl ? el.openaiModelInput : el.openaiBaseUrlInput).focus();
+        setTimeout(function(){ el.openaiBaseUrlInput.closest(".setting-group").classList.remove("flash"); }, 1600);
+        return;
+      }
+    } else if(!settings.apiKey){
       openSettings();
       el.apiKeyRow.classList.add("flash");
       el.apiKeyInput.focus();
@@ -929,14 +1125,41 @@
     }
     action();
   }
-  el.btnCamera.addEventListener("click", function(){ requireApiKeyThen(function(){ el.cameraInput.click(); }); });
-  el.btnFile.addEventListener("click", function(){ requireApiKeyThen(function(){ el.galleryInput.click(); }); });
-  el.btnCameraEmpty.addEventListener("click", function(){ requireApiKeyThen(function(){ el.cameraInput.click(); }); });
-  el.btnFileEmpty.addEventListener("click", function(){ requireApiKeyThen(function(){ el.galleryInput.click(); }); });
+
+  function openFileMenu(){ el.fileMenuOverlay.classList.remove("hidden"); }
+  function closeFileMenu(){ el.fileMenuOverlay.classList.add("hidden"); }
+
+  el.btnCamera.addEventListener("click", function(){ requireCredentialsThen(function(){ reworkTargetId = null; el.cameraInput.click(); }); });
+  el.btnCameraEmpty.addEventListener("click", function(){ requireCredentialsThen(function(){ reworkTargetId = null; el.cameraInput.click(); }); });
+  el.btnFileEmpty.addEventListener("click", function(){ requireCredentialsThen(function(){ el.galleryInput.click(); }); });
+
+  el.btnFileMenu.addEventListener("click", function(){
+    el.menuReworkPage.disabled = (currentIndex < 0 || !pages.length);
+    openFileMenu();
+  });
+  el.btnCloseFileMenu.addEventListener("click", closeFileMenu);
+  el.fileMenuOverlay.addEventListener("click", function(e){ if(e.target === el.fileMenuOverlay) closeFileMenu(); });
+  el.menuLoadFile.addEventListener("click", function(){
+    closeFileMenu();
+    requireCredentialsThen(function(){ el.galleryInput.click(); });
+  });
+  el.menuReworkPage.addEventListener("click", function(){
+    if(currentIndex < 0 || !pages.length) return;
+    closeFileMenu();
+    requireCredentialsThen(function(){
+      reworkTargetId = pages[currentIndex].id;
+      el.cameraInput.click();
+    });
+  });
 
   el.cameraInput.addEventListener("change", function(){
-    if(el.cameraInput.files[0]) beginNewPage(el.cameraInput.files[0]);
+    var file = el.cameraInput.files[0];
+    var targetId = reworkTargetId;
+    reworkTargetId = null;
     el.cameraInput.value = "";
+    if(!file) return;
+    if(targetId) reworkPage(targetId, file);
+    else beginNewPage(file);
   });
   el.galleryInput.addEventListener("change", function(){
     if(el.galleryInput.files[0]) beginNewPage(el.galleryInput.files[0]);
@@ -976,7 +1199,7 @@
   }
 
   // ---------- Gemini call ----------
-  function transcribeAndTranslate(apiKey, base64, mimeType, model, thinkingLevel){
+  function transcribeAndTranslateGemini(apiKey, base64, mimeType, model, thinkingLevel){
     var endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(apiKey);
     var body = {
       contents: [{
@@ -1036,13 +1259,106 @@
     });
   }
 
+  // ---------- OpenAI-compatible call (e.g. a local Llama.cpp server) ----------
+  function normalizeBaseUrl(baseUrl){
+    return baseUrl.replace(/\/+$/, "");
+  }
+
+  function transcribeAndTranslateOpenAI(baseUrl, apiKey, base64, mimeType, model, thinkingLevel){
+    var endpoint = normalizeBaseUrl(baseUrl) + "/chat/completions";
+    var body = {
+      model: model,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: PROMPT_TEXT },
+          { type: "image_url", image_url: { url: "data:" + mimeType + ";base64," + base64 } }
+        ]
+      }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "page_translation",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              language: { type: "string", description: "Name of the language the page is written in, in English, e.g. 'French' or 'Japanese'." },
+              original_text: { type: "string", description: "Transcription of the page in its original language, formatted in markdown." },
+              translated_text: { type: "string", description: "English translation of the page, formatted in markdown." }
+            },
+            required: ["language", "original_text", "translated_text"],
+            additionalProperties: false
+          }
+        }
+      }
+    };
+
+    // MINIMAL disables thinking entirely; everything else enables it.
+    // LOW/MEDIUM additionally cap the thinking token budget; HIGH sends no cap at all.
+    body.chat_template_kwargs = {
+      enable_thinking: thinkingLevel !== "MINIMAL"
+    };
+    if (Object.prototype.hasOwnProperty.call(OPENAI_REASONING_BUDGETS, thinkingLevel)) {
+      body.chat_template_kwargs.thinking_budget_tokens = OPENAI_REASONING_BUDGETS[thinkingLevel];
+    }
+
+    var headers = { "Content-Type": "application/json" };
+    if(apiKey) headers["Authorization"] = "Bearer " + apiKey;
+
+    return fetch(endpoint, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(body)
+    }).then(function(res){
+      if(!res.ok){
+        return res.json().catch(function(){ return null; }).then(function(errJson){
+          var msg = "Request failed (" + res.status + ").";
+          if(res.status === 401 || res.status === 403) msg = "That API key was rejected. Check it in Settings.";
+          else if(res.status === 404) msg = "That model isn't available at this Base URL.";
+          else if(res.status === 429) msg = "Rate limit reached. Wait a moment and try again.";
+          else if(res.status === 503) msg = "The server is experiencing high demand.";
+          else if(errJson && errJson.error && errJson.error.message) msg = errJson.error.message;
+          var e = new Error(msg);
+          e.code = res.status;
+          e.status = errJson && errJson.error && errJson.error.type;
+          throw e;
+        });
+      }
+      return res.json();
+    }).then(function(data){
+      var choice = data && data.choices && data.choices[0];
+      var content = choice && choice.message && choice.message.content;
+      if(!content) throw new Error("No text came back from the page. Try again.");
+      var parsed;
+      try{ parsed = JSON.parse(content); }
+      catch(e){ throw new Error("Couldn't understand the response. Try again."); }
+      if(!parsed.original_text || !parsed.translated_text){
+        throw new Error("The response was incomplete. Try again.");
+      }
+      return parsed;
+    }).catch(function(err){
+      if(err instanceof TypeError){
+        throw new Error("Couldn't reach the server. Check the Base URL and that it's running.");
+      }
+      throw err;
+    });
+  }
+
+  function transcribeAndTranslate(providerConfig, base64, mimeType){
+    if(providerConfig.providerType === "openai"){
+      return transcribeAndTranslateOpenAI(providerConfig.baseUrl, providerConfig.apiKey, base64, mimeType, providerConfig.model, providerConfig.thinkingLevel);
+    }
+    return transcribeAndTranslateGemini(providerConfig.apiKey, base64, mimeType, providerConfig.model, providerConfig.thinkingLevel);
+  }
+
   function isRetryableError(err){
     return err && (err.status === "UNAVAILABLE" || err.code === 503);
   }
 
-  function transcribeAndTranslateWithRetry(apiKey, base64, mimeType, model, thinkingLevel, onStatus){
+  function transcribeAndTranslateWithRetry(providerConfig, base64, mimeType, onStatus){
     function attempt(n){
-      return transcribeAndTranslate(apiKey, base64, mimeType, model, thinkingLevel).catch(function(err){
+      return transcribeAndTranslate(providerConfig, base64, mimeType).catch(function(err){
         if(isRetryableError(err) && n < MAX_ATTEMPTS){
           onStatus("High demand right now \u2014 retrying (attempt " + (n + 1) + " of " + MAX_ATTEMPTS + ")\u2026");
           return new Promise(function(resolve){ setTimeout(resolve, RETRY_DELAY_MS); }).then(function(){
@@ -1057,13 +1373,45 @@
   }
 
   // ---------- Process flow ----------
-  function beginNewPage(file){
+  function currentProviderSnapshot(){
+    if(settings.providerType === "openai"){
+      return {
+        providerType: "openai",
+        model: settings.openaiModel,
+        thinkingLevel: settings.openaiThinkingLevel,
+        baseUrl: settings.openaiBaseUrl
+      };
+    }
+    return {
+      providerType: "gemini",
+      model: settings.model,
+      thinkingLevel: settings.thinkingLevel
+    };
+  }
+
+  function providerConfigForPage(page){
+    if(page.providerType === "openai"){
+      return {
+        providerType: "openai",
+        baseUrl: page.baseUrl,
+        apiKey: settings.openaiApiKey,
+        model: page.model,
+        thinkingLevel: page.thinkingLevel
+      };
+    }
+    return {
+      providerType: "gemini",
+      apiKey: settings.apiKey,
+      model: page.model,
+      thinkingLevel: page.thinkingLevel
+    };
+  }
+
+  function makePage(providerSnapshot){
     var page = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       status: "pending",
       statusMessage: "Reading the page\u2026",
-      model: settings.model,
-      thinkingLevel: settings.thinkingLevel,
       language: null,
       original: null,
       translated: null,
@@ -1071,9 +1419,32 @@
       startedAt: Date.now(),
       createdAt: Date.now()
     };
+    for(var key in providerSnapshot){ page[key] = providerSnapshot[key]; }
+    return page;
+  }
+
+  function beginNewPage(file){
+    var page = makePage(currentProviderSnapshot());
+    var wasEmpty = pages.length === 0;
     pages.push(page);
     savePages();
-    currentIndex = pages.length - 1;
+    if(wasEmpty){
+      // Only jump to the new page if there was nothing else to look at.
+      currentIndex = pages.length - 1;
+      currentView = "translated";
+    }
+    render();
+    runProcessing(page, file);
+  }
+
+  function reworkPage(id, file){
+    var idx = findPageIndex(id);
+    if(idx === -1) return;
+    delete pageImageCache[id];
+    var page = makePage(currentProviderSnapshot());
+    pages.splice(idx, 1, page);
+    savePages();
+    currentIndex = idx;
     currentView = "translated";
     render();
     runProcessing(page, file);
@@ -1083,7 +1454,7 @@
     compressImage(file).then(function(img){
       pageImageCache[page.id] = img;
       updatePageStatusMessage(page.id, "Translating\u2026");
-      return transcribeAndTranslateWithRetry(settings.apiKey, img.base64, img.mimeType, page.model, page.thinkingLevel, function(msg){
+      return transcribeAndTranslateWithRetry(providerConfigForPage(page), img.base64, img.mimeType, function(msg){
         updatePageStatusMessage(page.id, msg);
       });
     }).then(function(result){
@@ -1114,9 +1485,9 @@
     page.startedAt = Date.now();
     page.errorMessage = null;
     savePages();
-    if(currentIndex === idx) render();
+    if(currentIndex === idx) render(); else updateNav();
 
-    transcribeAndTranslateWithRetry(settings.apiKey, img.base64, img.mimeType, page.model, page.thinkingLevel, function(msg){
+    transcribeAndTranslateWithRetry(providerConfigForPage(page), img.base64, img.mimeType, function(msg){
       updatePageStatusMessage(id, msg);
     }).then(function(result){
       finalizePage(id, {
