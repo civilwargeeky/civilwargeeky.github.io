@@ -429,6 +429,13 @@
   .menu-option-text{ display:flex; flex-direction:column; gap:2px; }
   .menu-option-sub{ font-size:12.5px; color: var(--text-muted); }
 
+  .overlay.centered{ align-items:center; padding:0 16px; }
+  .overlay.centered .sheet{ max-width:380px; border-radius:18px; }
+  .go-to-page-actions{ display:flex; gap:10px; margin-top:14px; }
+  .go-to-page-actions button{ flex:1; margin-top:0; padding:12px 0; text-align:center; }
+  .field-error{ font-size:13px; color: var(--danger); margin:8px 0 0; }
+  .text-input.invalid{ border-color: var(--danger); }
+
   :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
 </style>
 </head>
@@ -595,6 +602,29 @@
         <span class="menu-option-sub">Retake the photo using the current model settings</span>
       </span>
     </button>
+    <button id="menuGoToPage" class="menu-option">
+      <i class="fa-solid fa-list-ol"></i>
+      <span class="menu-option-text">Go to page</span>
+    </button>
+  </div>
+</div>
+
+<div id="goToPageOverlay" class="overlay centered hidden">
+  <div class="sheet">
+    <div class="sheet-header">
+      <h2>Go to page</h2>
+      <button id="btnCloseGoToPage" class="icon-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <section class="setting-group">
+      <label for="goToPageInput">Page number</label>
+      <input type="text" id="goToPageInput" class="text-input" inputmode="numeric" placeholder="e.g. 5" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <p class="hint" id="goToPageHint"></p>
+      <p class="field-error hidden" id="goToPageError" role="alert"></p>
+      <div class="go-to-page-actions">
+        <button id="btnGoToPageCancel" class="btn-secondary">Cancel</button>
+        <button id="btnGoToPageConfirm" class="btn-primary">Go</button>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -697,6 +727,15 @@
     btnCloseFileMenu: document.getElementById("btnCloseFileMenu"),
     menuLoadFile: document.getElementById("menuLoadFile"),
     menuReworkPage: document.getElementById("menuReworkPage"),
+    menuGoToPage: document.getElementById("menuGoToPage"),
+
+    goToPageOverlay: document.getElementById("goToPageOverlay"),
+    btnCloseGoToPage: document.getElementById("btnCloseGoToPage"),
+    goToPageInput: document.getElementById("goToPageInput"),
+    goToPageHint: document.getElementById("goToPageHint"),
+    goToPageError: document.getElementById("goToPageError"),
+    btnGoToPageCancel: document.getElementById("btnGoToPageCancel"),
+    btnGoToPageConfirm: document.getElementById("btnGoToPageConfirm"),
 
     cameraInput: document.getElementById("cameraInput"),
     galleryInput: document.getElementById("galleryInput")
@@ -1135,6 +1174,7 @@
 
   el.btnFileMenu.addEventListener("click", function(){
     el.menuReworkPage.disabled = (currentIndex < 0 || !pages.length);
+    el.menuGoToPage.disabled = (currentIndex < 0 || !pages.length);
     openFileMenu();
   });
   el.btnCloseFileMenu.addEventListener("click", closeFileMenu);
@@ -1151,6 +1191,51 @@
       el.cameraInput.click();
     });
   });
+
+  // ---------- Go to page ----------
+  function clearGoToPageError(){
+    el.goToPageError.textContent = "";
+    el.goToPageError.classList.add("hidden");
+    el.goToPageInput.classList.remove("invalid");
+  }
+  function showGoToPageError(message){
+    el.goToPageError.textContent = message;
+    el.goToPageError.classList.remove("hidden");
+    el.goToPageInput.classList.add("invalid");
+  }
+  function openGoToPage(){
+    if(!pages.length) return;
+    closeFileMenu();
+    el.goToPageInput.value = "";
+    el.goToPageHint.textContent = "Available pages: 1\u2013" + pages.length;
+    clearGoToPageError();
+    el.goToPageOverlay.classList.remove("hidden");
+    el.goToPageInput.focus();
+  }
+  function closeGoToPage(){ el.goToPageOverlay.classList.add("hidden"); }
+  function goToPageFromInput(){
+    var raw = el.goToPageInput.value.trim();
+    if(!/^\d+$/.test(raw)){
+      showGoToPageError("Enter a whole page number, e.g. 5.");
+      return;
+    }
+    var n = parseInt(raw, 10);
+    if(n < 1 || n > pages.length){
+      showGoToPageError("That's not a valid page. Enter a number from 1 to " + pages.length + ".");
+      return;
+    }
+    currentIndex = n - 1;
+    closeGoToPage();
+    render();
+  }
+
+  el.menuGoToPage.addEventListener("click", openGoToPage);
+  el.btnCloseGoToPage.addEventListener("click", closeGoToPage);
+  el.btnGoToPageCancel.addEventListener("click", closeGoToPage);
+  el.btnGoToPageConfirm.addEventListener("click", goToPageFromInput);
+  el.goToPageOverlay.addEventListener("click", function(e){ if(e.target === el.goToPageOverlay) closeGoToPage(); });
+  el.goToPageInput.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); goToPageFromInput(); } });
+  el.goToPageInput.addEventListener("input", clearGoToPageError);
 
   el.cameraInput.addEventListener("change", function(){
     var file = el.cameraInput.files[0];
