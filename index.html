@@ -620,9 +620,13 @@
       <h2>Add a page</h2>
       <button id="btnCloseFileMenu" class="icon-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
+    <button id="menuImportExport" class="menu-option">
+      <i class="fa-solid fa-right-left"></i>
+      <span class="menu-option-text">Import/Export</span>
+    </button>
     <button id="menuLoadFile" class="menu-option">
       <i class="fa-solid fa-file-image"></i>
-      <span class="menu-option-text">Load from file</span>
+      <span class="menu-option-text">Process Image File</span>
     </button>
     <button id="menuManageFailed" class="menu-option">
       <i class="fa-solid fa-triangle-exclamation"></i>
@@ -638,6 +642,23 @@
         Rework this page
         <span class="menu-option-sub">Retake the photo using the current model settings</span>
       </span>
+    </button>
+  </div>
+</div>
+
+<div id="importExportOverlay" class="overlay menu-sheet hidden">
+  <div class="sheet">
+    <div class="sheet-header">
+      <h2>Import / Export</h2>
+      <button id="btnCloseImportExport" class="icon-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <button id="menuImportFromFile" class="menu-option">
+      <i class="fa-solid fa-file-import"></i>
+      <span class="menu-option-text">Import from File</span>
+    </button>
+    <button id="menuExportToFile" class="menu-option">
+      <i class="fa-solid fa-file-export"></i>
+      <span class="menu-option-text">Export to File</span>
     </button>
   </div>
 </div>
@@ -674,6 +695,7 @@
 
 <input type="file" id="cameraInput" accept="image/*" capture="environment" class="visually-hidden">
 <input type="file" id="galleryInput" accept="image/*" class="visually-hidden">
+<input type="file" id="importInput" accept=".json,application/json" class="visually-hidden">
 
 <script>
 (function(){
@@ -772,6 +794,12 @@
     menuLoadFile: document.getElementById("menuLoadFile"),
     menuReworkPage: document.getElementById("menuReworkPage"),
     menuGoToPage: document.getElementById("menuGoToPage"),
+    menuImportExport: document.getElementById("menuImportExport"),
+
+    importExportOverlay: document.getElementById("importExportOverlay"),
+    btnCloseImportExport: document.getElementById("btnCloseImportExport"),
+    menuImportFromFile: document.getElementById("menuImportFromFile"),
+    menuExportToFile: document.getElementById("menuExportToFile"),
 
     goToPageOverlay: document.getElementById("goToPageOverlay"),
     btnCloseGoToPage: document.getElementById("btnCloseGoToPage"),
@@ -789,7 +817,8 @@
     failedCountLabel: document.getElementById("failedCountLabel"),
 
     cameraInput: document.getElementById("cameraInput"),
-    galleryInput: document.getElementById("galleryInput")
+    galleryInput: document.getElementById("galleryInput"),
+    importInput: document.getElementById("importInput")
   };
 
   // ---------- Persistence ----------
@@ -1359,6 +1388,74 @@
   el.menuManageFailed.addEventListener("click", openFailedPages);
   el.btnCloseFailedPages.addEventListener("click", closeFailedPages);
   el.failedPagesOverlay.addEventListener("click", function(e){ if(e.target === el.failedPagesOverlay) closeFailedPages(); });
+
+  // ---------- Import / Export ----------
+  function openImportExport(){
+    closeFileMenu();
+    el.importExportOverlay.classList.remove("hidden");
+  }
+  function closeImportExport(){ el.importExportOverlay.classList.add("hidden"); }
+
+  function exportToFile(){
+    var data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      settings: settings,
+      pages: pages
+    };
+    var json = JSON.stringify(data, null, 2);
+    var dateStr = new Date().toISOString().slice(0, 10);
+    var filename = "marginalia_export_" + dateStr + ".json";
+    var blob = new Blob([json], { type: "application/json" });
+    var file = new File([blob], filename, { type: "application/json" });
+
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      navigator.share({ files: [file], title: filename }).catch(function(){});
+    } else {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    }
+    closeImportExport();
+  }
+
+  function importFromFile(file){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var data = JSON.parse(e.target.result);
+        if(data.settings !== undefined && data.pages !== undefined){
+          localStorage.setItem("marginalia.settings", JSON.stringify(data.settings));
+          localStorage.setItem("marginalia.pages", JSON.stringify(data.pages));
+          location.reload();
+        } else {
+          showToast("Invalid export file: missing settings or pages.");
+        }
+      }catch(err){
+        showToast("Could not read the import file. Is it a valid Marginalia export?");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  el.menuImportExport.addEventListener("click", openImportExport);
+  el.btnCloseImportExport.addEventListener("click", closeImportExport);
+  el.importExportOverlay.addEventListener("click", function(e){ if(e.target === el.importExportOverlay) closeImportExport(); });
+  el.menuImportFromFile.addEventListener("click", function(){
+    closeImportExport();
+    el.importInput.click();
+  });
+  el.menuExportToFile.addEventListener("click", exportToFile);
+  el.importInput.addEventListener("change", function(){
+    var file = el.importInput.files[0];
+    el.importInput.value = "";
+    if(file) importFromFile(file);
+  });
 
   el.cameraInput.addEventListener("change", function(){
     var file = el.cameraInput.files[0];
